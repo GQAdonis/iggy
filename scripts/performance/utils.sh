@@ -75,15 +75,13 @@ function construct_bench_command() {
 
     local streams=${count}
 
-    local superdir
-    superdir="performance_results/$(get_git_iggy_server_tag_or_sha1 .)" || { echo "Failed to get git commit or tag."; exit 1; }
-    rm -rf "$superdir" || true
-    mkdir -p "$superdir" || { echo "Failed to create directory '$superdir'."; exit 1; }
-    local output_directory="${superdir}/${type}_${count}${type:0:1}_${message_size}_${messages_per_batch}_${message_batches}_${protocol}"
+    local commit_hash
+    commit_hash=$(get_git_iggy_server_tag_or_sha1 .) || { echo "Failed to get git commit or tag."; exit 1; }
+    local output_file="performance_results/${type}_${count}${type:0:1}_${message_size}_${messages_per_batch}_${message_batches}_${protocol}_${commit_hash}.json"
 
     echo "$bench_command \
     $COMMON_ARGS \
-    --output-directory $output_directory \
+    --output $output_file \
     ${type} \
     --${role} ${count} \
     --streams ${streams} \

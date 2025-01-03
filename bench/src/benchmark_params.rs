@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use crate::args::common::IggyBenchArgs;
 use iggy::utils::timestamp::IggyTimestamp;
 use serde::Serialize;
@@ -19,18 +17,6 @@ pub struct BenchmarkParams {
     number_of_consumer_groups: u32,
     disable_parallel_consumers: bool,
     disable_parallel_producers: bool,
-}
-
-impl BenchmarkParams {
-    pub fn dump_to_toml(&self, output_directory: &str) {
-        let output_file = format!("{}/params.toml", output_directory);
-        let toml_str = toml::to_string(self).unwrap();
-        Write::write_all(
-            &mut std::fs::File::create(output_file).unwrap(),
-            toml_str.as_bytes(),
-        )
-        .unwrap();
-    }
 }
 
 impl From<&IggyBenchArgs> for BenchmarkParams {
