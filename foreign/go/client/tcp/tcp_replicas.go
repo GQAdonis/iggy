@@ -148,7 +148,7 @@ func (r *replicaLinks) connect(ctx context.Context) (*tcpLink, error) {
 				break
 			}
 			err = dialErr
-			if isTLSConfigFault(err) {
+			if isTLSConfigFault(err) || errors.Is(err, errDialAddressDenied) {
 				configurationError = err
 			}
 		}
@@ -326,7 +326,7 @@ func (r *replicaLinks) runSlot(ctx context.Context, id uint8, slot *replicaSlot)
 		connection, err := r.dial(ctx, slot.endpoint)
 		failures++
 		if err != nil {
-			if isTLSConfigFault(err) {
+			if isTLSConfigFault(err) || errors.Is(err, errDialAddressDenied) {
 				return
 			}
 			continue

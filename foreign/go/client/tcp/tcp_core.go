@@ -78,6 +78,7 @@ type IggyTcpClient struct {
 }
 
 type config struct {
+	dialAddressPolicy func(context.Context, string) bool
 	// serverAddress is the address of the Iggy server
 	serverAddress string
 	// tlsEnabled indicates whether to use TLS when connecting to the server
@@ -181,6 +182,18 @@ func WithServerAddress(address string) Option {
 		opts.config.serverAddress = address
 	}
 }
+
+// WithDialAddressPolicy authorizes each TCP candidate before DNS resolution
+// or opening a socket, including bootstrap, reconnect and advertised replicas.
+// The callback may be called concurrently and should observe ctx cancellation.
+// It receives the exact host:port to be dialed. A nil policy preserves the default.
+func WithDialAddressPolicy(allow func(context.Context, string) bool) Option {
+	return func(opts *Options) {
+		opts.config.dialAddressPolicy = allow
+	}
+}
+
+var errDialAddressDenied = errors.New("iggy TCP destination rejected by dial policy")
 
 // WithAutoLogin supplies credentials for the initial session. Replacement
 // links bind the existing identity. A terminal session recovery signs in with
@@ -691,9 +704,15 @@ func isTLSConfigFault(err error) bool {
 }
 
 func (c *IggyTcpClient) dialCandidate(ctx context.Context, address string) (net.Conn, error) {
-	c.logger.Info("Iggy client is connecting to server...", slog.String("server_address", address))
 	ctx, cancel := context.WithTimeout(ctx, failoverDialTimeout)
 	defer cancel()
+	if allow := c.config.dialAddressPolicy; allow != nil && !allow(ctx, address) {
+		return nil, errDialAddressDenied
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	c.logger.Info("Iggy client is connecting to server...", slog.String("server_address", address))
 
 	var tlsConfiguration *tls.Config
 	if c.config.tlsEnabled {
